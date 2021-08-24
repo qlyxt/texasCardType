@@ -360,11 +360,12 @@ local compareFun_ = function (objA_,objB_)
     return objA_.sortNum > objB_.sortNum 
 end 
 
---检测table数组的长度是否超过5（顺子，高牌，同花，最多比较5张）
-local checkTbLenThan5_ = function (tarTb_)
+--检测table数组的长度是否超过默认5（顺子，高牌，同花，最多比较5张）
+local checkTbLenThanX_ = function (tarTb_,xNum_)
+    xNum_ = xNum_ or 5
     local tmp_len = #tarTb_
-    if tmp_len > 5 then 
-        for i = 6,tmp_len do 
+    if tmp_len > xNum_ then 
+        for i = xNum_+1,tmp_len do 
             tarTb_[i] = nil
         end
     end
@@ -583,8 +584,8 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
                     break
                 end
              end
-             checkTbLenThan5_(analysisData1.uniColor[tarColor])
-             checkTbLenThan5_(analysisData2.uniColor[tarColor])
+             checkTbLenThanX_(analysisData1.uniColor[tarColor])
+             checkTbLenThanX_(analysisData2.uniColor[tarColor])
              return sortNumCompare_(analysisData1.uniColor[tarColor],analysisData2.uniColor[tarColor]) 
         elseif cardType1 == CARD_TYPE.STRAIGHT then
              local maxLengLink1_ = getMaxLengLink_(analysisData1.cidData)
@@ -597,6 +598,8 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
             if threeRes ~= 0 then 
                 return threeRes
             else 
+                checkTbLenThanX_(analysisData1.smSingleCards,2)
+                checkTbLenThanX_(analysisData2.smSingleCards,2)
                 return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
             end
         elseif cardType1 == CARD_TYPE.TWO_PAIRS then
@@ -619,6 +622,8 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
             if pairRes ~= 0 then 
                 return pairRes
             else 
+                checkTbLenThanX_(analysisData1.smSingleCards,1)
+                checkTbLenThanX_(analysisData2.smSingleCards,1)
                 return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
             end
         elseif cardType1 == CARD_TYPE.PAIR then
@@ -626,13 +631,14 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
             if pairRes ~= 0 then 
                 return pairRes
             else 
+                checkTbLenThanX_(analysisData1.smSingleCards,3)
+                checkTbLenThanX_(analysisData2.smSingleCards,3)
                 return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
             end
 
         elseif cardType1 == CARD_TYPE.HIGH_CARD then
-            checkTbLenThan5_(analysisData1.smSingleCards)
-            checkTbLenThan5_(analysisData2.smSingleCards)
-            dumpTb(analysisData1.smSingleCards,'hell:1')
+            checkTbLenThanX_(analysisData1.smSingleCards)
+            checkTbLenThanX_(analysisData2.smSingleCards)
             return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
         end
     end 
@@ -679,9 +685,9 @@ local testCompareFun_ = function()
             publicCards =  {0x1a,0x1b,0x1c,0x22,0x25}
         },
         {
-            holdCards = {0x13,0x12},
-            holdCards2 = {0x13,0x14},
-            publicCards =  {0x1a,0x2b,0x1c,0x28,0x2d}
+            holdCards = {0x11,0x27},
+            holdCards2 = {0x26,0x14},
+            publicCards =  {0x12,0x13,0x14,0x15,0x17}
         },
     }
     for _,value in ipairs(allCardsTb) do 
