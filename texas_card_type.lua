@@ -1,9 +1,12 @@
 local DEBUG_CODE = true
 
 --打印table
-local dumpTb = function( t )  
+local dumpTb = function( t,info)  
     if not DEBUG_CODE then 
         return
+    end
+    if info then 
+        print(info)
     end
     local print_r_cache={}
     local function sub_print_r(t,indent)
@@ -72,19 +75,35 @@ local function shallow_copy(orig)
     return copy
 end
 
--- 方块  梅花 红桃 黑桃
+-- 方块 梅花 红桃 黑桃
 local CARD_COLOR_TYPE = {
-    FANG_KUAI = 1,
-    MEI_HUA = 2,
-    HONG_TAO = 3,
-    HEI_TAO = 4
+    DIAMOND = 1,
+    CLUB = 2,
+    HEART = 3,
+    SPADE = 4 
 }
 --牌颜色类型文本
 local CARD_COLOR_TYPE_TEXT = {
-    [CARD_COLOR_TYPE.FANG_KUAI] = '方块',
-    [CARD_COLOR_TYPE.MEI_HUA] = '梅花',
-    [CARD_COLOR_TYPE.HONG_TAO] = '红桃',
-    [CARD_COLOR_TYPE.HEI_TAO] = '黑桃',
+    [CARD_COLOR_TYPE.DIAMOND] = '方块',
+    [CARD_COLOR_TYPE.CLUB] = '梅花',
+    [CARD_COLOR_TYPE.HEART] = '红桃',
+    [CARD_COLOR_TYPE.SPADE] = '黑桃',
+}
+--牌数字文本
+local CARD_NUM_TEXT = {
+    [1] = 'A',
+    [2] = '2',
+    [3] = '3',
+    [4] = '4',
+    [5] = '5',
+    [6] = '6',
+    [7] = '7',
+    [8] = '8',
+    [9] = '9',
+    [10] = '10',
+    [11] = 'J',
+    [12] = 'Q',
+    [13] = 'K',
 }
 -- 牌型
 local CARD_TYPE = {
@@ -114,37 +133,85 @@ local CARD_TYPE_TEXT = {
     [CARD_TYPE.HIGH_CARD] = '高牌',
 }
 
--- dumpTb(CARD_TYPE)
--- dumpTb(CARD_TYPE_TEXT)
-
-local hexToIntForCardNum_ = function(hexCardNum_)
+--服务器下发的牌Sid转换为客户端牌Cid
+local cardSid2Cid_ = function(cardSid_) 
+    local hexCardNum_ = cardSid_
     local num = math.fmod(hexCardNum_,16) --取模 或者 hexCardNum_%16
     local color = math.modf(hexCardNum_/16) --取整 返回整数、余数
 
     local tmpNum = num == 1 and 14 or num -- 最小数值是2，最大数值是14(A)
-    local resInt = (color - 1) * 13 + tmpNum
+    local resInt = (color - 1) * 13 + tmpNum --花色 0 - 3
 
-    printValue('hexCardNum:'..hexCardNum_..'->'..CARD_COLOR_TYPE_TEXT[color]..num..'=>'..resInt)
+    printValue('cardSid_:'..hexCardNum_..'->'..CARD_COLOR_TYPE_TEXT[color]..CARD_NUM_TEXT[num]..'=>'..resInt)
     return resInt
 end
+--客户端牌Cid转换为服务端牌Sid
+local cardCid2Sid_ = function(cardCid_) 
+    local num = math.fmod(cardCid_,13) --取模 或者 cardCid_%13
+    local color = math.modf(cardCid_/13) --取整 返回整数、余数
+    if num == 0 or num == 1 then 
+        color = color - 1
+        if num == 0 then 
+            num = 13
+        end
+    end
+    
+    color = color + 1
+    local tarHexNum = color * 16 + num
+
+    printValue('cardCid_:'..cardCid_..'->'..CARD_COLOR_TYPE_TEXT[color]..CARD_NUM_TEXT[num]..'=>'..string.format("%#x",tarHexNum))
+    return resInt
+end
+-- cardCid2Sid_(24)
 
 local getCardTypeText = function (cardType_)
     printValue('牌型文本：'..CARD_TYPE_TEXT[cardType_])
     return CARD_TYPE_TEXT[cardType_]
 end
 
-local getCardType = function (holdCard_,publicCard_)
-    local map = {}
-    local allCards = {}
+local allCardsSidToCid_ = function(sids_,dstCids_)
+    local allCards = dstCids_ or {}
 
-    for i,v in ipairs(holdCard_) do 
-        table.insert(allCards,hexToIntForCardNum_(v))
+    for i,v in ipairs(sids_) do 
+        table.insert(allCards,cardSid2Cid_(v))
     end
-    for i,v in ipairs(publicCard_) do 
-        table.insert(allCards,hexToIntForCardNum_(v))
+
+    return allCards
+end
+
+--合并两个table
+local mergeTb_ = function (tb1_,tb2_)
+    local res = {}
+
+    for _,V in pairs(tb1_) do 
+        table.insert(res,V)
     end
-    dumpTb(allCards)  
-   
+
+    for _,V in pairs(tb2_) do 
+        table.insert(res,V)
+    end
+
+    return res
+end
+
+--table 裁切子数组
+local sliceTb_ = function (tarTb_,startIndex,endIndex_)
+    local res = {}
+    endIndex_ = endIndex_ or #tarTb_
+    for index,value in ipairs(tarTb_) do 
+        if index >= startIndex and index <= endIndex_ then 
+            table.insert(res,value)
+        end
+    end
+    -- dumpTb(res)
+    return res
+end
+
+--获取牌型的内部方法
+local getCardTypeInter_ = function (allCardsCid_) 
+    local allCards = allCardsCid_ 
+    local map = {}
+
     for i = 2,54 do 
         map[i]= false
     end
@@ -273,11 +340,290 @@ local getCardType = function (holdCard_,publicCard_)
     end
 
     printValue('牌型:'..resType)
+    getCardTypeText(resType)
     return resType
 end
 
+local getCardType = function (holdCard_,publicCard_)
+    local allCards = {}
+    allCardsSidToCid_(holdCard_,allCards)
+    allCardsSidToCid_(publicCard_,allCards)
+    return getCardTypeInter_(allCards) 
+end
 
---测试方法
+local compareFun_ = function (objA_,objB_) 
+    if not objA_ or not objB_ then 
+        return false
+    end 
+    -- 为nil的情况必须返回false
+    -- 相等的情况必须返回false (lua要求的坑点)
+    return objA_.sortNum > objB_.sortNum 
+end 
+
+local analysisCardData_ = function(cids_)
+    local res = {
+        cidData = {},
+        uniColor = {
+            [0] = {},
+            [1] = {},
+            [2] = {},
+            [3] = {}
+        },
+        smThourCards = {},
+        smThreeCards = {},
+        smSecondCards = {},
+        smSingleCards = {},
+    };
+    local smCardData = {}
+    for _,cidV in ipairs(cids_) do 
+        local tmp_item = {
+            rawCid = -1,
+            num = -1,
+            color = -1,
+            sortNum = -1
+        }
+        tmp_item.rawCid = cidV
+        
+        local tmp_num = math.fmod(cidV,13) --取模 或者 hexCardNum_%16
+        local tmp_color = math.modf(cidV/13) --取整 返回整数、余数
+        if tmp_num == 0 or tmp_num == 1 then 
+            tmp_color = tmp_color - 1
+        end
+
+        tmp_item.num = tmp_num
+        tmp_item.color = tmp_color
+
+        tmp_num = tmp_num == 0 and 13 or tmp_num
+        tmp_num = tmp_num == 1 and 14 or tmp_num
+      
+        tmp_item.sortNum = tmp_num
+        --
+        table.insert(res.cidData,tmp_item)
+        table.insert(res.uniColor[tmp_color],tmp_item)
+        if  not smCardData[tmp_num] then 
+            smCardData[tmp_num] = {}
+        end
+        table.insert(smCardData[tmp_num],tmp_item) 
+    end
+
+    for _,numObj in pairs(smCardData) do 
+        if #numObj == 4 then 
+            table.insert(res.smThourCards,numObj[1])
+        elseif #numObj == 3 then 
+            table.insert(res.smThreeCards,numObj[1])
+        elseif #numObj == 2 then 
+            table.insert(res.smSecondCards,numObj[1])
+        elseif #numObj == 1 then 
+            table.insert(res.smSingleCards,numObj[1])
+        end 
+    end
+
+    table.sort(res.cidData,compareFun_)
+    table.sort(res.smThourCards,compareFun_)
+    table.sort(res.smThreeCards,compareFun_)
+    table.sort(res.smSecondCards,compareFun_)
+    table.sort(res.smSingleCards,compareFun_)
+    table.sort(res.uniColor[0],compareFun_)
+    table.sort(res.uniColor[1],compareFun_)
+    table.sort(res.uniColor[2],compareFun_)
+    table.sort(res.uniColor[3],compareFun_)
+
+    -- for _,value in pairs(res) do 
+    --     if type(value) == 'table' then 
+    --         dumpTb(value);
+    --     end
+    -- end
+    -- dumpTb(res.smSingleCards,'单牌：');
+    return res
+end
+
+--牌值(逻辑牌值)比较
+local sortNumCompare_ = function (cardData1_,cardData2_)
+    for i = 1,#cardData1_ do 
+        if cardData1_[i].sortNum > cardData2_[i].sortNum then 
+            return 1
+        elseif cardData1_[i].sortNum < cardData2_[i].sortNum then 
+            return -1
+        end
+    end
+    return 0
+end
+
+--获取最长的顺子(最多7张牌中)
+local getMaxLengLink_ = function (cardData_)
+    local tarRes = {}
+    local lastCardNum_ = 0
+   
+    --首先判断有没有A
+    if cardData_[1].sortNum == 14 then 
+        table.insert(cardData_,shallow_copy(cardData_[1]))
+    end
+
+    for i=#cardData_ ,1,-1 do 
+        if i == #cardData_ and cardData_[i].sortNum == 14 then 
+            lastCardNum_ = 1
+            table.insert(tarRes,cardData_[i])
+        else 
+            if cardData_[i].sortNum - lastCardNum_ == 1 or lastCardNum_ == 0 then 
+                lastCardNum_ = cardData_[i].sortNum
+                table.insert(tarRes,cardData_[i])
+            elseif cardData_[i].sortNum - lastCardNum_ == 0 then 
+            else 
+                if #tarRes >= 5 then 
+                    break
+                end
+
+                tarRes = {}
+                lastCardNum_ = 0
+
+                lastCardNum_ = cardData_[i].sortNum
+                table.insert(tarRes,cardData_[i])
+            end
+        end
+    end
+
+    if #tarRes < 5 then 
+        tarRes = {}
+    end
+  
+    -- dumpTb(tarRes,'getMaxLengLink_:')
+    return tarRes
+end
+
+
+
+--比较两个牌型大小 
+-- 1： 手牌1 > 手牌2
+-- -1： 手牌1 < 手牌2
+-- 0： 手牌1 = 手牌2
+local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
+    local allCards1 = {}
+    local allCards2 = {}
+    allCardsSidToCid_(holdCard1_,allCards1)
+    allCardsSidToCid_(publicCard_,allCards1)
+    allCardsSidToCid_(holdCard2_,allCards2)
+    allCardsSidToCid_(publicCard_,allCards2)
+
+    if DEBUG_CODE then 
+        printValue('公共牌：')
+        allCardsSidToCid_(publicCard_)
+        printValue('手牌1：')
+        allCardsSidToCid_(holdCard1_)
+        printValue('手牌2：')
+        allCardsSidToCid_(holdCard2_)
+    end
+
+    local cardType1 = getCardTypeInter_(allCards1)
+    local cardType2 = getCardTypeInter_(allCards2)
+
+    if cardType1 > cardType2 then 
+        return 1
+    elseif cardType1 < cardType2 then
+        return -1
+    else 
+        local analysisData1 = analysisCardData_(allCards1)
+        local analysisData2 = analysisCardData_(allCards2)
+        if cardType1 == CARD_TYPE.STRAIGHT_FLUSH then 
+            local tarColor 
+            local uniColorTb = analysisData1.uniColor
+            for i=0,3 do  
+               if #uniColorTb[i] >= 5 then 
+                   tarColor = i
+                   break
+               end
+            end
+            local maxLengLink1_ = getMaxLengLink_(analysisData1.uniColor[tarColor])
+            local maxLengLink2_ = getMaxLengLink_(analysisData2.uniColor[tarColor])
+            local tmpMaxLengLink1_ = sliceTb_(maxLengLink1_,#maxLengLink1_)
+            local tmpMaxLengLink2_ = sliceTb_(maxLengLink2_,#maxLengLink2_)
+            return sortNumCompare_(tmpMaxLengLink1_,tmpMaxLengLink2_) 
+        elseif cardType1 == CARD_TYPE.FOUR_OF_A_KIND then
+            return  sortNumCompare_(analysisData1.smThourCards,analysisData2.smThourCards)
+        elseif cardType1 == CARD_TYPE.FULL_HOUSE then
+             local smTC1_ = analysisData1.smThreeCards
+             local smTC2_ = analysisData2.smThreeCards
+             local smSC1_ = analysisData1.smSecondCards
+             local smSC2_ = analysisData2.smSecondCards
+             if #smTC1_ > 1 then 
+                local tmp_tc1 = sliceTb_(smTC1_,2)
+                smSC1_ = mergeTb_(smSC1_,tmp_tc1)
+                table.sort(smSC1_,compareFun_)
+                smTC1_ = sliceTb_(smTC1_,1,1)
+             end
+             if #smTC2_ > 1 then 
+                local tmp_tc2 = sliceTb_(smTC2_,2)
+                smSC2_ = mergeTb_(smSC2_,tmp_tc2)
+                table.sort(smSC2_,compareFun_)
+                smTC2_ = sliceTb_(smTC2_,1,1)
+             end
+             -- 比较
+             local threeRes = sortNumCompare_(smTC1_,smTC2_)
+             if threeRes ~= 0 then 
+                 return threeRes
+             else 
+                 return sortNumCompare_(smSC1_,smSC2_) 
+             end
+        elseif cardType1 == CARD_TYPE.FLUSH then
+             local tarColor 
+             local uniColorTb = analysisData1.uniColor
+             for i=0,3 do  
+                if #uniColorTb[i] >= 5 then 
+                    tarColor = i
+                    break
+                end
+             end
+             return sortNumCompare_(analysisData1.uniColor[tarColor],analysisData2.uniColor[tarColor]) 
+        elseif cardType1 == CARD_TYPE.STRAIGHT then
+             local maxLengLink1_ = getMaxLengLink_(analysisData1.cidData)
+             local maxLengLink2_ = getMaxLengLink_(analysisData2.cidData)
+             local tmpMaxLengLink1_ = sliceTb_(maxLengLink1_,#maxLengLink1_)
+             local tmpMaxLengLink2_ = sliceTb_(maxLengLink2_,#maxLengLink2_)
+             return sortNumCompare_(tmpMaxLengLink1_,tmpMaxLengLink2_) 
+        elseif cardType1 == CARD_TYPE.THREE_OF_A_KIND then
+            local threeRes = sortNumCompare_(analysisData1.smThreeCards,analysisData2.smThreeCards)
+            if threeRes ~= 0 then 
+                return threeRes
+            else 
+                return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
+            end
+        elseif cardType1 == CARD_TYPE.TWO_PAIRS then
+            local smSC1_ = analysisData1.smSecondCards
+            local smSC2_ = analysisData2.smSecondCards
+            if #smSC1_ > 2 then 
+                local tmp_sc1 = sliceTb_(smSC1_,3)
+                analysisData1.smSingleCards = mergeTb_(analysisData1.smSingleCards,tmp_sc1)
+                table.sort(analysisData1.smSingleCards,compareFun_)
+                smSC1_ = sliceTb_(smSC1_,1,2)
+            end
+            if #smSC2_ > 2 then 
+                local tmp_sc2 = sliceTb_(smSC2_,3)
+                analysisData2.smSingleCards = mergeTb_(analysisData2.smSingleCards,tmp_sc2)
+                table.sort(analysisData2.smSingleCards,compareFun_)
+                smSC2_ = sliceTb_(smSC2_,1,2)
+            end
+            
+            local pairRes = sortNumCompare_(smSC1_,smSC2_)
+            if pairRes ~= 0 then 
+                return pairRes
+            else 
+                return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
+            end
+        elseif cardType1 == CARD_TYPE.PAIR then
+            local pairRes = sortNumCompare_(analysisData1.smSecondCards,analysisData2.smSecondCards)
+            if pairRes ~= 0 then 
+                return pairRes
+            else 
+                return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
+            end
+
+        elseif cardType1 == CARD_TYPE.HIGH_CARD then
+            return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
+        end
+    end 
+end
+
+
+--测试牌型方法
 local testFun_ = function()
     --方块  梅花 红桃 黑桃
     --方块 0x11 0x12 0x13 ....... 0x1a 0x1b 0x1c 0x1d
@@ -307,10 +653,28 @@ local testFun_ = function()
         getCardTypeText(cardType)
     end
 end 
+-- testFun_()
+--测试比牌
+local testCompareFun_ = function()
+    local allCardsTb = {
+        {
+            holdCards = {0x11,0x12},
+            holdCards2 = {0x13,0x14},
+            publicCards =  {0x1a,0x1b,0x1c,0x22,0x25}
+        },
+        {
+            holdCards = {0x13,0x12},
+            holdCards2 = {0x13,0x14},
+            publicCards =  {0x1a,0x2b,0x1c,0x28,0x2d}
+        },
+    }
+    for _,value in ipairs(allCardsTb) do 
+        local res = compareCardType(value['holdCards'],value['holdCards2'],value['publicCards'])
+        print('比牌结果:'..res)
+    end
+end
 
-testFun_()
-
-
+testCompareFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
