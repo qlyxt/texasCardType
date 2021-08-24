@@ -360,6 +360,16 @@ local compareFun_ = function (objA_,objB_)
     return objA_.sortNum > objB_.sortNum 
 end 
 
+--检测table数组的长度是否超过5（顺子，高牌，同花，最多比较5张）
+local checkTbLenThan5_ = function (tarTb_)
+    local tmp_len = #tarTb_
+    if tmp_len > 5 then 
+        for i = 6,tmp_len do 
+            tarTb_[i] = nil
+        end
+    end
+end
+
 local analysisCardData_ = function(cids_)
     local res = {
         cidData = {},
@@ -523,6 +533,7 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
     else 
         local analysisData1 = analysisCardData_(allCards1)
         local analysisData2 = analysisCardData_(allCards2)
+
         if cardType1 == CARD_TYPE.STRAIGHT_FLUSH then 
             local tarColor 
             local uniColorTb = analysisData1.uniColor
@@ -572,6 +583,8 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
                     break
                 end
              end
+             checkTbLenThan5_(analysisData1.uniColor[tarColor])
+             checkTbLenThan5_(analysisData2.uniColor[tarColor])
              return sortNumCompare_(analysisData1.uniColor[tarColor],analysisData2.uniColor[tarColor]) 
         elseif cardType1 == CARD_TYPE.STRAIGHT then
              local maxLengLink1_ = getMaxLengLink_(analysisData1.cidData)
@@ -617,6 +630,9 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
             end
 
         elseif cardType1 == CARD_TYPE.HIGH_CARD then
+            checkTbLenThan5_(analysisData1.smSingleCards)
+            checkTbLenThan5_(analysisData2.smSingleCards)
+            dumpTb(analysisData1.smSingleCards,'hell:1')
             return sortNumCompare_(analysisData1.smSingleCards,analysisData2.smSingleCards) 
         end
     end 
