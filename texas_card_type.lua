@@ -92,7 +92,7 @@ local function shallow_copy(orig)
     return copy
 end
 
-local minCardNum = 2 --最小牌是2
+local MIN_CARD_NUM = 2 --最小牌是2
 -- 方块 梅花 红桃 黑桃
 local CARD_COLOR_TYPE = {
     DIAMOND = 1,
@@ -198,15 +198,19 @@ local allCardsSidToCid_ = function(sids_,dstCids_)
 end
 
 --合并两个table
-local mergeTb_ = function (tb1_,tb2_)
-    local res = {}
+local mergeTb_ = function (tb1_,tb2_,dstTb_)
+    local res = dstTb_ or {}
 
-    for _,V in pairs(tb1_) do 
-        table.insert(res,V)
+    if tb1_ then 
+        for _,V in pairs(tb1_) do 
+            table.insert(res,V)
+        end
     end
-
-    for _,V in pairs(tb2_) do 
-        table.insert(res,V)
+   
+    if tb2_ then 
+        for _,V in pairs(tb2_) do 
+            table.insert(res,V)
+        end
     end
 
     return res
@@ -230,7 +234,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     local allCards = allCardsCid_ 
     local map = {}
 
-    for i = minCardNum,53 do 
+    for i = 2,53 do 
         map[i]= false
     end
 
@@ -243,7 +247,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     local uniColorCountMax = 0 --全局同花色张数的最大值
     local uniColorLinkMax = 0 --全局同颜色连接数的最大值
 
-    local tmpInitNum = minCardNum == 2 and 1 or minCardNum
+    local tmpInitNum = MIN_CARD_NUM == 2 and 1 or MIN_CARD_NUM
     for colorV = 0,3 do 
         local tmp_count = 0;
 		local tmp_link = 0;
@@ -311,7 +315,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     --全局相同数字的张数的第一大值和第二大值
     local uniSameNumMaxFirst = 0
     local uniSameNumMaxSecond = 0
-    for numV = minCardNum,14 do 
+    for numV = MIN_CARD_NUM,14 do 
         if sameNumTb[numV] >= uniSameNumMaxFirst then 
             uniSameNumMaxSecond = uniSameNumMaxFirst
             uniSameNumMaxFirst = sameNumTb[numV]
@@ -524,7 +528,7 @@ end
 
 --设置最小牌num，默认是2,常用还有6
 local setMinCardNum = function (tarNum_)
-    minCardNum = tarNum_
+    MIN_CARD_NUM = tarNum_
     printValue('setMinCardNum:',tarNum_)
 end
 
@@ -678,11 +682,57 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
 end
 
 
-
---获取目标手牌的保险outs数
-local getOutsForTarHC = function (tarHoldCard_,publicCard_,otherHoldCards_)
-
+--获取所有手牌各自的outs牌
+local getOutsForHoldCards = function (selfHoldCard_,otherHoldCards_,publicCard_)
+    local hcLen = #selfHoldCard_ + #otherHoldCards_
+    if hcLen <= 1 then 
+        printValue('少于2组手牌传入，无法进行outs计算')
+        return
+    end
+    --所有牌
+    local allCards = {}
+    local tmpMinNum = MIN_CARD_NUM == 2 and 1 or MIN_CARD_NUM
+    local tmpKey
+    for i=1,4 do 
+        for j=tmpMinNum,13 do
+            tmpKey = i*16+j
+            allCards[tmpKey] = false
+        end
+    end
+    -- dumpTb(allCards,'YXTTT1:')
+    --所有手牌及公共牌
+    local curAllCards = {}
+    mergeTb_(publicCard_,nil,curAllCards)
+    for _,valueNum in pairs(holdCards_) do 
+        mergeTb_(valueNum,nil,curAllCards)
+    end
+    for _,valueNum in pairs(curAllCards) do 
+        allCards[valueNum] = true
+    end
+    -- dumpTb(allCards,'YXTTT2:')
+    --计算outs
+    for _,valueNum in pairs(allCards) do 
+        if  not allCards[valueNum] then 
+            local publicCardCp = shallow_copy(publicCard_)
+            table.insert(publicCardCp,valueNum)
+            local maxIndex = -1
+            for i=2,hcLen do 
+                local tarIndexTmp = maxIndex
+                if tarIndexTmp == -1 then 
+                    tarIndexTmp = 1
+                end
+                local compareResTmp = compareCardType(holdCards_[tarIndexTmp],holdCards_[i],publicCardCp)
+                if compareResTmp == 1 then 
+                    maxIndex = tarIndexTmp
+                elseif compareResTmp == -1 then 
+                    maxIndex = i
+                end
+            end
+        end
+    end
 end
+
+-- getOutsForHoldCards()
 
 --测试牌型方法
 local testFun_ = function()
@@ -707,6 +757,10 @@ local testFun_ = function()
         {
             holdCards = {0x21,0x12},
             publicCards =  {0x23,0x24,0x22,0x32}
+        },
+        {
+            holdCards = {0x1a,0x39},
+            publicCards =  {0x4a,0x28,0x38,0x27,0x3a}
         },
     }
     for _,value in ipairs(allCardsTb) do 
@@ -741,7 +795,31 @@ local testCompareFun_ = function()
     end
 end
 
-testCompareFun_()
+-- testCompareFun_()
+
+local testOutsFun_ = function()
+    local allCardsTb = {
+        {
+            holdCards = {{0x11,0x12},{0x13,0x14}},
+            publicCards =  {0x1a,0x1b,0x1c,0x22,0x25}
+        },
+    }
+    local index = 0 
+    for _,value in ipairs(allCardsTb) do 
+        index = index + 1
+        print_t('测试outs开始:'..index)
+        local oriSec = os.clock()
+
+        local res = getOutsForOneHC(value['holdCards'],value['publicCards'])
+        -- dumpTb(res,'outs 牌:')
+
+        print_sec(oriSec)
+        print_t('测试outsend:'..index)
+       
+    end
+end
+
+testOutsFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
