@@ -242,11 +242,13 @@ local getCardTypeInter_ = function (allCardsCid_)
     local colorLinkMaxTb = {} --每个花色的最大连接数
     local uniColorCountMax = 0 --全局同花色张数的最大值
     local uniColorLinkMax = 0 --全局同颜色连接数的最大值
+
+    local tmpInitNum = minCardNum == 2 and 1 or minCardNum
     for colorV = 0,3 do 
         local tmp_count = 0;
 		local tmp_link = 0;
 		local tmp_link_Max = 0;
-        for numV = 1,14 do 
+        for numV = tmpInitNum,14 do 
             local has_card = false
             if numV == 1 then 
                 -- 考虑 A2345的情况
@@ -277,7 +279,8 @@ local getCardTypeInter_ = function (allCardsCid_)
     local numLinkMax = 0 --最大的数字连接长度
     local sameNumTb = {} --每个数字重复的次数
     local tmp_num_link_max = 0
-    for numV = 1,14 do 
+   
+    for numV = tmpInitNum,14 do 
         local tmp_count = 0
         local tmp_has_card = false
         for colorV = 0,3 do 
@@ -519,7 +522,13 @@ local getMaxLengLink_ = function (cardData_)
     return tarRes
 end
 
+--设置最小牌num，默认是2,常用还有6
+local setMinCardNum = function (tarNum_)
+    minCardNum = tarNum_
+    printValue('setMinCardNum:',tarNum_)
+end
 
+-- setMinCardNum(6)
 
 --比较两个牌型大小 
 -- 1： 手牌1 > 手牌2
@@ -737,6 +746,7 @@ return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
     CARD_TYPE_TEXT = CARD_TYPE_TEXT,    --牌型文本枚举
+    setMinCardNum = setMinCardNum,      --设置最小牌num
     getCardType = getCardType,          --获取牌型的方法
     getCardTypeText = getCardTypeText,   --获取牌型文本的方法
     compareCardType = compareCardType   --获取比牌方法
