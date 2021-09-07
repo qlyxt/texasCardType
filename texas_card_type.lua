@@ -47,6 +47,23 @@ local printValue = function(...)
     end
     print(...)
 end
+--打印带时间戳的日志
+local print_t = function(...)
+    if not DEBUG_CODE then 
+        return 
+    end
+	print(os.date("%Y-%m-%d %H:%M %S", os.time()),os.time(),...)
+end
+
+local print_sec = function(oriSec_)
+    if not DEBUG_CODE then 
+        return 
+    end
+    local curSec_ = os.clock()
+    print("used time "..(curSec_ - oriSec_) .." seconds")
+end
+
+
 --深copy
 local function deep_copy(orig)
     local copy
@@ -75,6 +92,7 @@ local function shallow_copy(orig)
     return copy
 end
 
+local minCardNum = 2 --最小牌是2
 -- 方块 梅花 红桃 黑桃
 local CARD_COLOR_TYPE = {
     DIAMOND = 1,
@@ -212,7 +230,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     local allCards = allCardsCid_ 
     local map = {}
 
-    for i = 2,54 do 
+    for i = minCardNum,53 do 
         map[i]= false
     end
 
@@ -224,7 +242,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     local colorLinkMaxTb = {} --每个花色的最大连接数
     local uniColorCountMax = 0 --全局同花色张数的最大值
     local uniColorLinkMax = 0 --全局同颜色连接数的最大值
-    for colorV = 0,4 do 
+    for colorV = 0,3 do 
         local tmp_count = 0;
 		local tmp_link = 0;
 		local tmp_link_Max = 0;
@@ -250,7 +268,7 @@ local getCardTypeInter_ = function (allCardsCid_)
         colorCountTb[colorV] = tmp_count
         colorLinkMaxTb[colorV] = tmp_link_Max
     end
-    for colorV = 0,4 do
+    for colorV = 0,3 do
         uniColorCountMax = math.max(colorCountTb[colorV],uniColorCountMax)
         uniColorLinkMax = math.max(colorLinkMaxTb[colorV],uniColorLinkMax)
     end
@@ -262,7 +280,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     for numV = 1,14 do 
         local tmp_count = 0
         local tmp_has_card = false
-        for colorV = 0,4 do 
+        for colorV = 0,3 do 
             local has_card = false
             if numV == 1 then 
                 has_card = map[14 + colorV * 13]
@@ -290,7 +308,7 @@ local getCardTypeInter_ = function (allCardsCid_)
     --全局相同数字的张数的第一大值和第二大值
     local uniSameNumMaxFirst = 0
     local uniSameNumMaxSecond = 0
-    for numV = 2,14 do 
+    for numV = minCardNum,14 do 
         if sameNumTb[numV] >= uniSameNumMaxFirst then 
             uniSameNumMaxSecond = uniSameNumMaxFirst
             uniSameNumMaxFirst = sameNumTb[numV]
@@ -507,23 +525,9 @@ end
 -- 1： 手牌1 > 手牌2
 -- -1： 手牌1 < 手牌2
 -- 0： 手牌1 = 手牌2
-local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
-    local allCards1 = {}
-    local allCards2 = {}
-    allCardsSidToCid_(holdCard1_,allCards1)
-    allCardsSidToCid_(publicCard_,allCards1)
-    allCardsSidToCid_(holdCard2_,allCards2)
-    allCardsSidToCid_(publicCard_,allCards2)
-
-    if DEBUG_CODE then 
-        printValue('公共牌：')
-        allCardsSidToCid_(publicCard_)
-        printValue('手牌1：')
-        allCardsSidToCid_(holdCard1_)
-        printValue('手牌2：')
-        allCardsSidToCid_(holdCard2_)
-    end
-
+local compareCardTypeInter_ = function(allCards1_,allCards2_)
+    local  allCards1 = allCards1_
+    local  allCards2 = allCards2_
     local cardType1 = getCardTypeInter_(allCards1)
     local cardType2 = getCardTypeInter_(allCards2)
 
@@ -644,6 +648,32 @@ local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
     end 
 end
 
+local compareCardType = function(holdCard1_,holdCard2_,publicCard_)
+    local allCards1 = {}
+    local allCards2 = {}
+    allCardsSidToCid_(holdCard1_,allCards1)
+    allCardsSidToCid_(publicCard_,allCards1)
+    allCardsSidToCid_(holdCard2_,allCards2)
+    allCardsSidToCid_(publicCard_,allCards2)
+
+    if DEBUG_CODE then 
+        printValue('公共牌：')
+        allCardsSidToCid_(publicCard_)
+        printValue('手牌1：')
+        allCardsSidToCid_(holdCard1_)
+        printValue('手牌2：')
+        allCardsSidToCid_(holdCard2_)
+    end
+
+    return compareCardTypeInter_(allCards1,allCards2)
+end
+
+
+
+--获取目标手牌的保险outs数
+local getOutsForTarHC = function (tarHoldCard_,publicCard_,otherHoldCards_)
+
+end
 
 --测试牌型方法
 local testFun_ = function()
@@ -690,13 +720,19 @@ local testCompareFun_ = function()
             publicCards =  {0x23,0x13,0x18,0x15,0x17}
         },
     }
+    local index = 0 
     for _,value in ipairs(allCardsTb) do 
+        index = index + 1
+        print_t('测试比牌开始:'..index)
+        local oriSec = os.clock()
         local res = compareCardType(value['holdCards'],value['holdCards2'],value['publicCards'])
         print('比牌结果:'..res)
+        print_t('测试比牌结束:'..index)
+        print_sec(oriSec)
     end
 end
 
--- testCompareFun_()
+testCompareFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
