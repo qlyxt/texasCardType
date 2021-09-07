@@ -685,9 +685,9 @@ local testCompareFun_ = function()
             publicCards =  {0x1a,0x1b,0x1c,0x22,0x25}
         },
         {
-            holdCards = {0x11,0x27},
-            holdCards2 = {0x26,0x14},
-            publicCards =  {0x12,0x13,0x14,0x15,0x17}
+            holdCards = {0x33,0x26},
+            holdCards2 = {0x43,0x32},
+            publicCards =  {0x23,0x13,0x18,0x15,0x17}
         },
     }
     for _,value in ipairs(allCardsTb) do 
@@ -696,12 +696,13 @@ local testCompareFun_ = function()
     end
 end
 
-testCompareFun_()
+-- testCompareFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
     CARD_TYPE_TEXT = CARD_TYPE_TEXT,    --牌型文本枚举
     getCardType = getCardType,          --获取牌型的方法
-    getCardTypeText = getCardTypeText   --获取牌型文本的方法
+    getCardTypeText = getCardTypeText,   --获取牌型文本的方法
+    compareCardType = compareCardType   --获取比牌方法
 }
 
