@@ -683,8 +683,8 @@ end
 
 
 --获取所有手牌各自的outs牌
-local getOutsForHoldCards = function (selfHoldCard_,otherHoldCards_,publicCard_)
-    local hcLen = #selfHoldCard_ + #otherHoldCards_
+local getOutsForHoldCards = function (holdCards_,publicCard_)
+    local hcLen = #holdCards_
     if hcLen <= 1 then 
         printValue('少于2组手牌传入，无法进行outs计算')
         return
