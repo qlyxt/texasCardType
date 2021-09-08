@@ -710,26 +710,53 @@ local getOutsForHoldCards = function (holdCards_,publicCard_)
         allCards[valueNum] = true
     end
     -- dumpTb(allCards,'YXTTT2:')
+    local resOuts = {}
+    for i=1,hcLen do 
+        table.insert(resOuts,{})
+    end
     --计算outs
-    for _,valueNum in pairs(allCards) do 
-        if  not allCards[valueNum] then 
+    for valueKey,valueNum in pairs(allCards) do 
+        if  not valueNum then 
             local publicCardCp = shallow_copy(publicCard_)
-            table.insert(publicCardCp,valueNum)
-            local maxIndex = -1
+            table.insert(publicCardCp,valueKey)
+            local maxIndex = 1
+            local hasMaxIndex = true
             for i=2,hcLen do 
-                local tarIndexTmp = maxIndex
-                if tarIndexTmp == -1 then 
-                    tarIndexTmp = 1
-                end
-                local compareResTmp = compareCardType(holdCards_[tarIndexTmp],holdCards_[i],publicCardCp)
+                local compareResTmp = compareCardType(holdCards_[maxIndex],holdCards_[i],publicCardCp)
                 if compareResTmp == 1 then 
-                    maxIndex = tarIndexTmp
+                    -- maxIndex = maxIndex
                 elseif compareResTmp == -1 then 
                     maxIndex = i
+                else 
+                    hasMaxIndex = false
+                    break
                 end
+            end
+            if hasMaxIndex then 
+                table.insert(resOuts[maxIndex],valueKey)
             end
         end
     end
+    dumpTb(resOuts,'outs 牌:')
+    return resOuts
+end
+--获取所有手牌各自的胜率
+local getWinRateForHoldCards = function(holdCards_,publicCard_)
+    local resOuts = getOutsForHoldCards(holdCards_,publicCard_)
+    local resRate = {}
+    local sumNum = 0
+    for _,valueNum in pairs(resOuts) do
+        sumNum  = sumNum + #valueNum
+    end
+
+    for _,valueNum in pairs(resOuts) do
+        local rateNum = #valueNum/sumNum
+        local decimal = math.floor((rateNum*100)+0.5)*0.01   
+        table.insert(resRate,decimal)
+    end
+  
+    dumpTb(resRate,'胜率:')
+    return resRate
 end
 
 -- getOutsForHoldCards()
@@ -800,8 +827,8 @@ end
 local testOutsFun_ = function()
     local allCardsTb = {
         {
-            holdCards = {{0x11,0x12},{0x13,0x14}},
-            publicCards =  {0x1a,0x1b,0x1c,0x22,0x25}
+            holdCards = {{0x22,0x12},{0x19,0x29}},
+            publicCards =  {0x1a,0x1b,0x1c,0x23,0x25}
         },
     }
     local index = 0 
@@ -810,16 +837,15 @@ local testOutsFun_ = function()
         print_t('测试outs开始:'..index)
         local oriSec = os.clock()
 
-        local res = getOutsForOneHC(value['holdCards'],value['publicCards'])
-        -- dumpTb(res,'outs 牌:')
-
+        local res = getWinRateForHoldCards(value['holdCards'],value['publicCards'])
+       
         print_sec(oriSec)
         print_t('测试outsend:'..index)
        
     end
 end
 
-testOutsFun_()
+-- testOutsFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
@@ -827,6 +853,7 @@ return {
     setMinCardNum = setMinCardNum,      --设置最小牌num
     getCardType = getCardType,          --获取牌型的方法
     getCardTypeText = getCardTypeText,   --获取牌型文本的方法
-    compareCardType = compareCardType   --获取比牌方法
+    compareCardType = compareCardType,   --获取比牌方法
+    getWinRateForHoldCards = getWinRateForHoldCards --获取各自手牌的胜率
 }
 
