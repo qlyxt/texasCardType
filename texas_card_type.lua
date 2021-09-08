@@ -1,4 +1,5 @@
 local DEBUG_CODE = true
+local LOG_PREFIX = '[TEXAS_CT]:'
 
 --打印table
 local dumpTb = function( t,info)  
@@ -6,7 +7,7 @@ local dumpTb = function( t,info)
         return
     end
     if info then 
-        print(info)
+        print(LOG_PREFIX..info)
     end
     local print_r_cache={}
     local function sub_print_r(t,indent)
@@ -45,14 +46,14 @@ local printValue = function(...)
     if not DEBUG_CODE then 
         return 
     end
-    print(...)
+    print(LOG_PREFIX .. ...)
 end
 --打印带时间戳的日志
 local print_t = function(...)
     if not DEBUG_CODE then 
         return 
     end
-	print(os.date("%Y-%m-%d %H:%M %S", os.time()),os.time(),...)
+	print(LOG_PREFIX .. os.date("%Y-%m-%d %H:%M %S", os.time()),os.time(),...)
 end
 
 local print_sec = function(oriSec_)
@@ -60,7 +61,7 @@ local print_sec = function(oriSec_)
         return 
     end
     local curSec_ = os.clock()
-    print("used time "..(curSec_ - oriSec_) .." seconds")
+    print(LOG_PREFIX .. "used time "..(curSec_ - oriSec_) .." seconds")
 end
 
 
@@ -845,7 +846,7 @@ local testOutsFun_ = function()
     end
 end
 
--- testOutsFun_()
+testOutsFun_()
 return {
     CARD_COLOR_TYPE = CARD_COLOR_TYPE,  --牌颜色枚举
     CARD_TYPE = CARD_TYPE,              --牌型枚举
